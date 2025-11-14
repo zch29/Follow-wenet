@@ -390,7 +390,7 @@ def init_dataset_and_dataloader(args, configs, tokenizer, seed=777):
 
     # NOTE(xcsong): Why we prefer persistent_workers=True ?
     #   https://discuss.pytorch.org/t/what-are-the-dis-advantages-of-persistent-workers/102110
-    mp_context = mp.get_context("spawn") if args.num_workers > 0 and TORCH_NPU_AVAILABLE else None
+    mp_context = mp.get_context("spawn") if args.num_workers > 0 else None
     train_data_loader = DataLoader(train_dataset,
                                    batch_size=None,
                                    pin_memory=args.pin_memory,

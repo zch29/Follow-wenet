@@ -65,7 +65,7 @@ class PrefixBeamSearch():
 
         ctc_probs = self.ctc.log_softmax(encoder_out).squeeze(0)
         beam_init: List[Sequence] = []
-
+        # breakpoint()
         # 2. init beam using Sequence to save beam unit
         cache = self.predictor.init_state(1, method="zero", device=device)
         beam_init.append(Sequence(hyp=[self.blank], score=0.0, cache=cache))
@@ -84,7 +84,7 @@ class PrefixBeamSearch():
                 [s.cache for s in beam_init])
             # build score tensor to do torch.add() function
             scores = torch.tensor([s.score for s in beam_init]).to(device)
-
+            # breakpoint()
             # 3.2 forward decoder
             logp, new_cache = self.forward_decoder_one_step(
                 encoder_out[:, i, :].unsqueeze(1),
@@ -134,8 +134,10 @@ class PrefixBeamSearch():
                 for t in range(len(fusion_A)):
                     # notice: A_ can not fusion with A
                     if s1.hyp == fusion_A[t].hyp:
+                        # fusion_A[t].score = log_add(
+                        #     [fusion_A[t].score, s1.score])
                         fusion_A[t].score = log_add(
-                            [fusion_A[t].score, s1.score])
+                            fusion_A[t].score, s1.score)
                         if_do_append = False
                         break
                 if if_do_append:

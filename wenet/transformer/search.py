@@ -347,7 +347,6 @@ def attention_beam_search(
 
         # 2.6 Update end flag
         end_flag = torch.eq(hyps[:, -1], model.eos).view(-1, 1)
-
     # 3. Select best of best
     scores = scores.view(batch_size, beam_size)
     lengths = hyps.ne(model.eos).sum(dim=1).view(batch_size, beam_size).float()

@@ -1,1 +1,1 @@
-/aistor/aispeech/hpc_stor01/home/lixu/workspace/wenet/aicar/wenet/__init__.py
+from wenet.cli.model import load_model, load_model_pt  # noqa

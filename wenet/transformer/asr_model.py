@@ -133,9 +133,11 @@ class ASRModel(torch.nn.Module):
             "th_accuracy": acc_att,
         }
 
+    #def tie_or_clone_weights(self, jit_mode: bool = True):
+    #    self.decoder.tie_or_clone_weights(jit_mode)
     def tie_or_clone_weights(self, jit_mode: bool = True):
-        if hasattr(self,"decoder") and self.decoder is not None:
-            if hasattr(self,"tie_or_clone_weights"):
+        if hasattr(self, "decoder") and self.decoder is not None:
+            if hasattr(self, "tie_or_clone_weights"):
                 self.decoder.tie_or_clone_weights(jit_mode)
 
     @torch.jit.unused
@@ -303,6 +305,7 @@ class ASRModel(torch.nn.Module):
 
         Returns: dict results of all decoding methods
         """
+        #breakpoint()
         assert speech.shape[0] == speech_lengths.shape[0]
         assert decoding_chunk_size != 0
         encoder_out, encoder_mask = self._forward_encoder(
@@ -324,6 +327,7 @@ class ASRModel(torch.nn.Module):
                                                        context_graph, blank_id)
             results['ctc_prefix_beam_search'] = ctc_prefix_result
         if 'attention_rescoring' in methods:
+
             # attention_rescoring depends on ctc_prefix_beam_search nbest
             if 'ctc_prefix_beam_search' in results:
                 ctc_prefix_result = results['ctc_prefix_beam_search']
@@ -337,6 +341,56 @@ class ASRModel(torch.nn.Module):
             results['attention_rescoring'] = attention_rescoring(
                 self, ctc_prefix_result, encoder_out, encoder_lens, ctc_weight,
                 reverse_weight, infos)
+        ##################### 新增 transducer 解码 #####################
+        from wenet.transducer.transducer import Transducer
+        from wenet.transformer.search import DecodeResult
+        import logging, traceback
+
+        if isinstance(self, Transducer) and any(m in methods for m in [
+            'rnnt_greedy_search', 'rnnt_beam_search', 'rnnt_beam_attn_rescoring'
+        ]):
+            try:
+                # rnnt greedy
+                if 'rnnt_greedy_search' in methods:
+                    greedy_results = []
+                    for i in range(encoder_out.size(0)):
+                        result = self.greedy_search(
+                            speech=speech[i:i+1],
+                            speech_lengths=speech_lengths[i:i+1],
+                            decoding_chunk_size=decoding_chunk_size,
+                            num_decoding_left_chunks=num_decoding_left_chunks,
+                            simulate_streaming=simulate_streaming
+                        )
+                        tokens = result[0] if isinstance(result, (list, tuple)) else result
+                        greedy_results.append(DecodeResult(tokens=tokens))
+                    results['rnnt_greedy_search'] = greedy_results
+
+                # rnnt beam
+                if 'rnnt_beam_search' in methods:
+                    beam_results = []
+                    for i in range(encoder_out.size(0)):
+                        result = self.beam_search(
+                            speech=speech[i:i+1],
+                            speech_lengths=speech_lengths[i:i+1],
+                            beam_size=beam_size,
+                            decoding_chunk_size=decoding_chunk_size,
+                            num_decoding_left_chunks=num_decoding_left_chunks,
+                            simulate_streaming=simulate_streaming,
+                            ctc_weight=ctc_weight,
+                            transducer_weight=self.transducer_weight
+                        )
+                        tokens, score = result if isinstance(result, (list, tuple)) else (result, 0.0)
+                        beam_results.append(DecodeResult(tokens=tokens, score=score))
+                    results['rnnt_beam_search'] = beam_results
+
+            except Exception as e:
+                logging.warning(f"[Transducer] 搜索失败: {type(e).__name__}: {e}")
+                logging.warning(traceback.format_exc())
+                logging.info("降级到CTC解码模式...")
+        ##################### 新增 transducer 解码 #####################
+
+
+
         return results
 
     @torch.jit.export

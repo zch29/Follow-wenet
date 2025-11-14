@@ -116,14 +116,15 @@ def init_speech_model(args, configs):
         **configs['encoder_conf']['efficient_conf']
         if 'efficient_conf' in configs['encoder_conf'] else {})
 
-### chenghao ###
-    if model_type == "transducer" and configs.get('model_conf',{}).get('rnnt',False):
+    #decoder = WENET_DECODER_CLASSES[decoder_type](vocab_size,
+    #                                              encoder.output_size(),
+    #                                              **configs['decoder_conf'])
+    #breakpoint()
+
+    if model_type == "transducer" and configs.get('model_conf',{}).get('rnnt', False):
         decoder = None
     else:
-        decoder = WENET_DECODER_CLASSES[decoder_type](vocab_size,
-                                                  encoder.output_size(),
-                                                  **configs['decoder_conf'])
-### chenghao ###
+        decoder = WENET_DECODER_CLASSES[decoder_type](vocab_size, encoder.output_size(), **configs['decoder_conf'])
 
     ctc = WENET_CTC_CLASSES[ctc_type](
         vocab_size,
@@ -131,7 +132,7 @@ def init_speech_model(args, configs):
         blank_id=configs['ctc_conf']['ctc_blank_id']
         if 'ctc_conf' in configs else 0)
 
-    #model_type = configs.get('model', 'asr_model')
+    model_type = configs.get('model', 'asr_model')
     if model_type == "transducer":
         predictor_type = configs.get('predictor', 'rnn')
         joint_type = configs.get('joint', 'transducer_joint')
@@ -183,6 +184,7 @@ def init_model(args, configs):
 
     model_type = configs.get('model', 'asr_model')
     configs['model'] = model_type
+    #breakpoint()
     model, configs = init_speech_model(args, configs)
 
     if hasattr(args, 'use_lora') and args.use_lora:
