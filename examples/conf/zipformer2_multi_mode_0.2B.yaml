@@ -1,0 +1,136 @@
+#[AI修改 开始位置 20260115 Zipformer2多模训练配置] 作用：提供可直接跑通的 Zipformer2 + MultiModeJoiner 训练配置
+input_dim: 40
+encoder: zipformer2
+encoder_conf:
+  output_size: 512
+  encoder_embed_out_channels: 192
+  zipformer_conf:
+    #[参数注释] 作用：补充 zipformer_conf 参数含义，便于调参与排障
+    output_downsampling_factor: 2  # 编码器最终输出再下采样倍率（当前实现默认/强依赖=2，写死了...）
+    downsampling_factor: [2, 2, 4, 8, 4, 2]  # 每个 stack 的内部计算下采样倍率（降采样算->上采样回原长度->残差融合）
+    num_encoder_layers: [2, 2, 3, 4, 3, 2]  # 每个 stack 的层数（列表长度需与 downsampling_factor 一致）
+    feedforward_dim: [512, 768, 1024, 1536, 1024, 768]  # 每个 stack FFN 隐层维度（影响容量与算力）
+    num_heads: [4, 4, 4, 8, 4, 4]  # 每个 stack 注意力 head 数（需与 head_dim 配合满足整除关系）
+    encoder_dim: [192, 256, 384, 512, 384, 256]  # 每个 stack 的通道/特征维度（多分辨率拼接到最大维度输出）
+    query_head_dim: 32  # 每个 head 的 query/key 维度（key_dim = num_heads * query_head_dim）
+    value_head_dim: 12  # 每个 head 的 value 维度（value_dim = num_heads * value_head_dim）
+    pos_head_dim: 4  # 相对位置编码投影的每 head 维度（影响位置建模容量与算力）
+    pos_dim: 48  # 位置编码的基础维度（进入 per-head 投影前）
+    encoder_unmasked_dim: [192, 192, 256, 256, 256, 192]  # 训练时特征mask/dropout保留的“未遮挡维度”上限
+    cnn_module_kernel: [31, 31, 15, 15, 15, 31]  # 每个 stack 卷积模块核大小（影响右上下文/延迟与效果）
+    causal: true  # 是否启用因果/流式训练与 chunk 模式（true 支持 streaming_forward）
+    chunk_size: [8, 16, 32, 64]  # 训练时随机选取的 chunk 长度（单位：帧；需能被各 downsampling_factor 整除）
+    left_context_frames: [8, 64, 128, 256]  # 左上下文帧数（会折算成 left_context_chunks；需满足卷积核与下采样约束）
+    #[结束位置 20260119 参数注释]
+  subsampling_conf: {}
+
+joint: multi_mode_joint
+joint_conf:
+  enc_output_size: 512
+  pred_output_size: 512
+  join_dim: 1024
+  num_heads: 8
+  ff_hidden: 2048
+  dropout_rate: 0.1
+  activation: 'tanh'
+  blank_id: 0
+  eps: 1e-6
+
+predictor: rnn
+predictor_conf:
+  embed_size: 512
+  output_size: 512
+  embed_dropout: 0.1
+  hidden_size: 512
+  num_layers: 2
+  bias: true
+  rnn_type: 'lstm'
+  dropout: 0.1
+
+tokenizer: bpe
+tokenizer_conf:
+  symbol_table_path: 'data/dict/lang_bpe.txt'
+  split_with_space: false
+  bpe_path: 'data/dict/lang_bpe_500.model'
+  non_lang_syms_path: null
+  is_multilingual: false
+  num_languages: 1
+  special_tokens:
+    <blank>: 0
+    <unk>: 1
+    <sos>: 2
+    <eos>: 2
+
+ctc: ctc
+ctc_conf:
+  ctc_blank_id: 0
+
+cmvn: global_cmvn
+cmvn_conf:
+  cmvn_file: 'data/cmvn/global_cmvn'
+  is_json_cmvn: true
+
+model: transducer
+model_conf:
+  rnnt: false
+  enable_k2: true
+  transducer_weight: 0.6
+  ctc_weight: 0.1
+  attention_weight: 0.3
+  lm_loss_weight: 0.1
+  lsm_weight: 0.1
+
+dataset: asr
+dataset_conf:
+  use_precomputed_feat: true
+  filter_conf:
+    max_length: 2000
+    min_length: 10
+    token_max_length: 200
+    token_min_length: 2
+  resample_conf:
+    resample_rate: 16000
+  speed_perturb: false
+  fbank_conf:
+    num_mel_bins: 40
+    frame_shift: 10
+    frame_length: 25
+    dither: 0.1
+    window_type: 'hamming'
+  spec_aug: false
+  spec_aug_conf:
+    num_t_mask: 2
+    num_f_mask: 2
+    max_t: 50
+    max_f: 10
+  spec_sub: false
+  spec_sub_conf:
+    num_t_sub: 3
+    max_t: 30
+  spec_trim: false
+  spec_trim_conf:
+    max_t: 50
+  shuffle: true
+  shuffle_conf:
+    shuffle_size: 1500
+  list_shuffle: false
+  sort: true
+  sort_conf:
+    sort_size: 100
+  batch_conf:
+    batch_type: 'dynamic'
+    max_frames_in_batch: 10000
+
+grad_clip: 2
+accum_grad: 8
+max_epoch: 140
+log_interval: 100
+save_interval: 5000
+
+optim: adam
+optim_conf:
+  lr: 0.001
+scheduler: warmuplr
+scheduler_conf:
+  warmup_steps: 25000
+#[AI修改 结束位置 20260115 Zipformer2多模训练配置]

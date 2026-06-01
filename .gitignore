@@ -1,0 +1,72 @@
+# Python/cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.bak
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local editors and agent state
+.idea/
+.vscode/
+.trae/
+.codex/
+.agents/
+
+# Experiment outputs and logs
+exp/
+tensorboard/
+benchmark_results/
+benchmark_scripts/
+benchmark_scripts/benchmark_results/
+debug.JOB.lo/
+*.log
+events.out.tfevents*
+
+# Data and generated decode artifacts
+data/
+data_debug/
+data
+data_debug
+exp
+shards/
+*.jsonl.gz
+*.ark
+*.scp.tmp
+
+# Model/export artifacts
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.jit
+*.bin
+*.safetensors
+*.tar
+*.tar.gz
+*.zip
+
+# Audio and large feature files
+*.wav
+*.flac
+*.mp3
+*.pcm
+*.npy
+*.npz
+
+# Local external project symlinks
+/conf
+/icefall
+/tools
+/extend_zch
+/pytorch-asr
+/TRASH
+/run_prepare_.sh
+
+# Scratch files in this working tree
+.sh
+a
+single.log
+zipparams
+split_lines.py.bak_*

@@ -1,0 +1,134 @@
+# network architecture
+# encoder related
+input_dim: 40
+encoder: conformer
+encoder_conf:
+    output_size: 512 #256    # dimension of attention
+    attention_heads: 8 #4
+    linear_units: 2048  # the number of units of position-wise feed forward
+    num_blocks: 24      # the number of encoder blocks
+    dropout_rate: 0.1
+    positional_dropout_rate: 0.1
+    attention_dropout_rate: 0.1
+    input_layer: conv2d # encoder input type, you can chose conv2d, conv2d6 and conv2d8
+    normalize_before: true
+    cnn_module_kernel: 15
+    use_cnn_module: true
+    activation_type: 'swish'
+    pos_enc_layer_type: 'rel_pos'
+    selfattention_layer_type: 'rel_selfattn'
+    causal: true
+    use_dynamic_chunk: true
+    cnn_module_norm: 'layer_norm'
+    use_dynamic_left_chunk: false
+
+joint: transducer_joint
+joint_conf:
+    enc_output_size: 512
+    pred_output_size: 512
+    join_dim: 1024
+    prejoin_linear: True
+    postjoin_linear: false
+    joint_mode: 'add'
+    activation: 'tanh'
+
+predictor: rnn
+predictor_conf:
+    embed_size: 1024
+    output_size: 512
+    embed_dropout: 0.1
+    hidden_size: 1024
+    num_layers: 4
+    bias: true
+    rnn_type: 'lstm'
+    dropout: 0.1
+
+tokenizer: bpe
+tokenizer_conf:
+  symbol_table_path: 'data/dict/lang_bpe.txt'
+  split_with_space: false
+  bpe_path: 'data/dict/lang_bpe_500.model'
+  non_lang_syms_path: null
+  is_multilingual: false
+  num_languages: 1
+  special_tokens:
+    <blank>: 0
+    <unk>: 1
+    <sos>: 2
+    <eos>: 2
+
+ctc: ctc
+ctc_conf:
+  ctc_blank_id: 0
+
+cmvn: global_cmvn
+cmvn_conf:
+  cmvn_file: 'data/cmvn/global_cmvn'
+  is_json_cmvn: true
+
+# hybrid transducer+ctc+attention
+model: transducer
+model_conf:
+    rnnt: true
+    #skip_rnnt_loss: false
+    enable_k2: True
+    transducer_weight: 0.9
+    ctc_weight: 0.1
+    lsm_weight: 0.1     # label smoothing option
+    length_normalized_loss: false
+    reverse_weight: 0.3
+
+dataset: asr
+dataset_conf:
+    use_precomputed_feat: true
+    filter_conf:
+        max_length: 2000
+        min_length: 10
+        token_max_length: 200
+        token_min_length: 2
+    resample_conf:
+        resample_rate: 16000
+    speed_perturb: false
+    fbank_conf:
+        num_mel_bins: 40
+        frame_shift: 10
+        frame_length: 25
+        dither: 0.1
+        window_type: 'hamming'
+    spec_aug: false
+    spec_aug_conf:
+        num_t_mask: 2
+        num_f_mask: 2
+        max_t: 50
+        max_f: 10
+    spec_sub: false
+    spec_sub_conf:
+        num_t_sub: 3
+        max_t: 30
+    spec_trim: false
+    spec_trim_conf:
+        max_t: 50
+    shuffle: true
+    shuffle_conf:
+        shuffle_size: 1500
+    list_shuffle: false
+    sort: true
+    sort_conf:
+        sort_size: 100  # sort_size should be less than shuffle_size
+    batch_conf:
+        batch_type: 'dynamic' # static or dynamic
+        max_frames_in_batch: 10000
+
+
+grad_clip: 2
+accum_grad: 8
+max_epoch: 140
+log_interval: 100
+save_interval: 5000
+
+optim: adam
+optim_conf:
+    lr: 0.001
+scheduler: warmuplr     # pytorch v1.1.0+ required
+scheduler_conf:
+    warmup_steps: 25000
