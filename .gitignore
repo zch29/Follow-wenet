@@ -13,6 +13,7 @@ __pycache__/
 .trae/
 .codex/
 .agents/
+.omx/
 
 # Experiment outputs and logs
 exp/
